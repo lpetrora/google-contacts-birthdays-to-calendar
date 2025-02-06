@@ -10,38 +10,75 @@ if (! targetCalendar ) {
   throw `Calendar with id '${targetCalendarId}' not found. Please set the targetCalendar variable to one of the previous list`;
 }
 
-// Loop through contacts that have a birthday
+// Entry point
 function main() {
-  let birthdaysCounter = 0;
-  var contacts = ContactsApp.getContacts();
-  contacts.sort( (a,b) => a.getFullName().localeCompare(b.getFullName()))
-
-  for (var i = 0; i < contacts.length; i++) {
-    var contact = contacts[i];
-    var birthdays = contact.getDates(ContactsApp.Field.BIRTHDAY);
-    if (birthdays.length > 0) {
-      birthdaysCounter ++;
-      var birthdayField = birthdays[0];
-      updateOrCreateBirthDayEvent(contact, birthdayField);
-    }
+  const contacts = getContactsWithBirthdays();
+  for (contact of contacts) {
+    updateOrCreateBirthDayEvent(contact);
   }
 
-  Logger.log (`Processed ${contacts.length} contacts and ${birthdaysCounter} birthdays`);
+  Logger.log (`Processed ${contacts.length} contacts with birthday`);
 }
 
-function updateOrCreateBirthDayEvent(contact, birthdayField) {
+class Contact {
+  constructor (fullName, birthday = null) {
+    this.fullName = fullName;    
+    this.birthday = birthday;
+  }
+
+  getFullName () {
+    return this.fullName
+  }
+
+  getBirthday () {
+    return this.birthday
+  }
+}
+
+function getContactsWithBirthdays() {
+    
+  let nextPageToken = '';
+  const result = [];
+
+  while (nextPageToken !== null) {
+    const people = People.People.Connections.list('people/me', {
+      personFields: 'names,birthdays',
+      pageToken: nextPageToken,
+    });
+
+    for (person of people.connections) {
+      const displayName = person.names[0].displayName;
+      const birthday = person?.birthdays ? person.birthdays[0].date : null;
+      if (birthday === null) continue;      
+      result.push( new Contact (displayName, birthday) );
+    }
+
+    nextPageToken = people?.nextPageToken || null;
+  }
+  
+  result.sort( (a,b) => a.getFullName().localeCompare(b.getFullName()))
+
+  return result;
+}
+
+function updateOrCreateBirthDayEvent(contact) {
   const contactName = contact.getFullName();
+  const birthdayField = contact.getBirthday();
   const nextBirthday = calculateNextBirthday(birthdayField);
 
-  const ageAtNextBirthday = nextBirthday.getFullYear() - birthdayField.getYear();
-  const suffix = ageAtNextBirthday !== nextBirthday.getFullYear() ? "'s birthday (" + ageAtNextBirthday + ")" : "'s birthday";
+  const pattern = "'s birthday"
+
+  const suffix = ( !! birthdayField.getYear()) ?
+    `${pattern} (${nextBirthday.getFullYear() - birthdayField.getYear()})` : 
+    pattern;
+    
   const title = contactName + suffix;
 
-  var birthdayEvent = findBirthdayEvent(targetCalendar, contactName, nextBirthday);
+  const birthdayEvent = findBirthdayEvent(targetCalendar, contactName, nextBirthday, pattern);
   
   if (birthdayEvent) {
     if (birthdayEvent.getTitle() == title && birthdayEvent.isAllDayEvent()) {
-      Logger.log("Skipped event: " + title);
+      Logger.log(`Skipped event:  ${title}`);
       return;
     }
 
@@ -56,7 +93,8 @@ function updateOrCreateBirthDayEvent(contact, birthdayField) {
       }
     }
 
-    Logger.log("Updated event: " + title);
+    Logger.log(`Updated event: ${title}`);
+
   } else {
     // Create new event
     var startTime = new Date(nextBirthday.getFullYear(), nextBirthday.getMonth(), nextBirthday.getDate());
@@ -66,17 +104,17 @@ function updateOrCreateBirthDayEvent(contact, birthdayField) {
       allDayEvent.addPopupReminder(reminderOffset);
     }
     
-    Logger.log("Created new event: " + title);
+    Logger.log(`Created new event: ${title}`);
   }
 }
 
-function findBirthdayEvent(calendar, contactName, nextBirthday) {
+function findBirthdayEvent(calendar, contactName, nextBirthday, pattern) {
   const startDate = new Date(nextBirthday.getFullYear(), nextBirthday.getMonth(), nextBirthday.getDate());
   var endDate = new Date(startDate);
   endDate.setDate(startDate.getDate() + 1);
 
   var events = calendar.getEvents(startDate, endDate);
-  var searchPattern = contactName + "'s birthday";
+  var searchPattern = contactName + pattern;
 
   for (var i = 0; i < events.length; i++) {
     var eventTitle = events[i].getTitle();
@@ -89,10 +127,9 @@ function findBirthdayEvent(calendar, contactName, nextBirthday) {
 }
 
 function calculateNextBirthday(birthdayField) {
-  var monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-  var day = birthdayField.getDay();
-  var monthName = birthdayField.getMonth().toString(); // Convert to uppercase
-  var month = monthNames.indexOf(monthName);
+  const day = birthdayField.getDay();
+  const month = birthdayField.getMonth() -1;
+
 
   var today = new Date();
   var nextBirthdayYear = today.getFullYear();
