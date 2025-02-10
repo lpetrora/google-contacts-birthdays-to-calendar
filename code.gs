@@ -47,6 +47,7 @@ function getContactsWithBirthdays() {
     });
 
     for (person of people.connections) {
+      if (!person.names || !person.names[0]) continue;
       const displayName = person.names[0].displayName;
       const birthday = person?.birthdays ? person.birthdays[0].date : null;
       if (birthday === null) continue;      
