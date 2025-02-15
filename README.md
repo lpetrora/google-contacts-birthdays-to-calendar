@@ -11,16 +11,16 @@ For each contact with a birthday, it adds an all-day event in your Google Calend
 
 ## Setup Instructions
 1. **Open Google Apps Script**: Navigate to [Google Apps Script](https://script.google.com) and create a new project
-2. **Copy the Script**: Copy the provided script into the script editor
+2. **Copy the Script**: Copy the provided script (`code.gs`) into the script editor
 3. **Add People Api service**:
-   - Click on the "+" sign in services
-   - Search for "Person Api"
-   - Select it and click "Add"   
+   - Click on the "+" next to "Services"
+   - Search for "Peopleapi"
+   - Select it and click "Add"
 4. **Run & Permissions**: From the script editor click on "Run" and accept permissions when asked
-5. **Customize Script**: Replace the `targetCalendarId` on line 16 with the target CalendarID
-   - Run the script manually, as it will display a list of calendars with their respective id.
+5. **Set the target calendar**:
+   - Run the script manually, it will display a list of calendars with their respective id.
    - Choose the `id` of your calendar
-   - Update `targetCalendarId` variable to that value
+   - Update `targetCalendarId` variable on line 1 to that value (instead of `null`)
 6. **Adjust reminder**: Update the `reminderOffset` variable
    - If you don't want any reminder, set it to `null`
    - Set how many minutes before the birthday day you want a reminder
