@@ -14,7 +14,11 @@ if (! targetCalendar ) {
 function main() {
   const contacts = getContactsWithBirthdays();
   for (contact of contacts) {
-    updateOrCreateBirthDayEvent(contact);
+    try {
+      updateOrCreateBirthDayEvent(contact);
+    } catch (e) {
+      Logger.log(`❌ Error processing contact "${contact?.getFullName()||'unknown'}": ${e}`);
+    }
   }
 
   Logger.log (`Processed ${contacts.length} contacts with birthday`);
